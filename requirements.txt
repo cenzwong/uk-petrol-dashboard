@@ -1,0 +1,3 @@
+pyspark
+apache-sedona[spark]
+geopandas
