@@ -3,10 +3,10 @@ import pandas as pd
 from streamlit_geolocation import streamlit_geolocation
 from geopy.distance import geodesic
 
-from src import main
+from pipeline.shell.ingestion import get_data
 
 # Load the data
-df = main.df_unpacked_df
+df = get_data()
 
 # App title
 st.title('Shell Petrol Price Finder')

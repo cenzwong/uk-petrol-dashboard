@@ -1,42 +1,27 @@
-from pyspark.sql import functions as F
-from pyspark.sql import SparkSession, DataFrame
+import pandas as pd
+import json
 from datetime import date
 
-def extract(json_path) -> DataFrame:
-    # Read JSON file
-    return spark.read.json(json_path)
 
-def transformation(df: DataFrame) -> DataFrame:
-    return df.select(
-        "last_updated",
-        F.explode("stations").alias("stations")
-    ).select(
-        F.col("last_updated"),
-        F.col("stations")["site_id"].alias("site_id"),
-        F.col("stations")["brand"].alias("brand"),
-        F.col("stations")["address"].alias("address"),
-        F.col("stations")["postcode"].alias("postcode"),
-        F.col("stations")["location"]["latitude"].alias("lat"),
-        F.col("stations")["location"]["longitude"].alias("lon"),
-        F.col("stations")["prices"]["B7"].alias("B7"),
-        F.col("stations")["prices"]["E10"].alias("E10")
-    )
-
-def load(df: DataFrame) -> None:
-    df.to_csv(f'data/shell/shell_fuel_prices_{today_str}.csv', index=False)
-
-if __name__ == "__main__":
-    spark = SparkSession.builder.appName("Read Shell Fuel Prices JSON").getOrCreate()
-
+def get_data() -> pd.DataFrame:
     # Get today's date
     today_str = date.today().isoformat()
 
     # File path
     json_path = f"data/shell/shell_fuel_prices_{today_str}.json"
 
+    # Read JSON file
+    with open(json_path, 'r') as file:
+        data = json.load(file)
 
-    extract(json_path).transform(
-        transformation
-    ).transform(
-        load
-    )
+    # Normalize JSON data
+    df = pd.json_normalize(data, record_path=['stations'], meta=['last_updated'])
+
+    # Select and rename columns
+    df_unpacked = df[['last_updated', 'site_id', 'brand', 'address', 'postcode', 'location.latitude', 'location.longitude', 'prices.B7', 'prices.E10']]
+    df_unpacked.columns = ['last_updated', 'site_id', 'brand', 'address', 'postcode', 'lat', 'lon', 'B7', 'E10']
+
+    return df_unpacked
+
+if __name__ == "__main__":
+    print(get_data().head())
