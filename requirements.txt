@@ -1,5 +1,7 @@
-pyspark
 geopandas
 streamlit-geolocation
 streamlit
 geopy
+matplotlib
+seaborn
+plotly
