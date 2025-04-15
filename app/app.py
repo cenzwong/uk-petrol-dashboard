@@ -22,9 +22,9 @@ st.markdown(f"**Data last updated:** {last_updated}")
 st.sidebar.header('Filter by Location')
 st.sidebar.markdown("Please allow location access in your browser.")
 
-# Let user set the radius in miles
-radius_miles = st.sidebar.slider("🔍 Search radius (miles):", min_value=1, max_value=20, value=3)
-radius_km = radius_miles * 1.60934
+# Let user set the radius in miles, including option for 'All'
+radius_options = list(range(1, 21)) + ["All"]
+radius_selection = st.sidebar.selectbox("🔍 Search radius (miles):", radius_options, index=2)
 
 # Call geolocation
 location = streamlit_geolocation()
@@ -34,14 +34,21 @@ if location and location.get('latitude') and location.get('longitude'):
     user_lat = location['latitude']
     user_lon = location['longitude']
 
-    # Compute distance and filter within user-defined radius
-    def within_radius(row):
-        return geodesic((user_lat, user_lon), (row['lat'], row['lon'])).km <= radius_km
-
     shell_df = df[df['brand'].str.lower() == 'shell']
-    filtered_df = shell_df[shell_df.apply(within_radius, axis=1)]
 
-    st.success(f"Filtering Shell stations within ~{radius_miles} miles of: {user_lat}, {user_lon}")
+    if radius_selection == "All":
+        filtered_df = shell_df.copy()
+        st.success(f"Showing all Shell stations (ignoring location filter)")
+    else:
+        radius_km = int(radius_selection) * 1.60934
+
+        # Compute distance and filter within user-defined radius
+        def within_radius(row):
+            return geodesic((user_lat, user_lon), (row['lat'], row['lon'])).km <= radius_km
+
+        filtered_df = shell_df[shell_df.apply(within_radius, axis=1)]
+
+        st.success(f"Filtering Shell stations within ~{radius_selection} miles of: {user_lat}, {user_lon}")
 
     # Display the filtered table with E10 and B7 prices
     st.subheader('Filtered Shell Petrol Stations')
