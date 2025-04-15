@@ -3,10 +3,12 @@ import pandas as pd
 from streamlit_geolocation import streamlit_geolocation
 from geopy.distance import geodesic
 
-from pipeline.shell.ingestion import get_data
+# URL of the CSV file
+url = "https://raw.githubusercontent.com/cenzwong/uk-petrol-ingestion/refs/heads/main/data/shell/shell_fuel_prices_2025-04-15.csv"
 
-# Load the data
-df = get_data()
+# Read the CSV file from the URL
+df = pd.read_csv(url)
+
 
 # App title
 st.title('Shell Petrol Price Finder')
