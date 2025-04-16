@@ -18,17 +18,24 @@ st.title('Shell Petrol Price Finder')
 last_updated = df['last_updated'].max()
 st.markdown(f"**Data last updated:** {last_updated}")
 
-# Sidebar: get user's geolocation
-st.sidebar.header('Filter by Location')
-st.sidebar.markdown("Please allow location access in your browser.")
+# Call geolocation
+location = streamlit_geolocation()
+
+# Location and radius filtering section
+st.markdown("### 🔍 Filter by Location")
+st.markdown("Please allow location access in your browser.")
 
 # Let user set the radius in miles, including option for 'All'
 radius_options = list(range(1, 21)) + ["All"]
-radius_selection = st.sidebar.selectbox("🔍 Search radius (miles):", radius_options, index=2)
+radius_selection = st.selectbox("Search radius (miles):", radius_options, index=2)
 
-# Call geolocation
-location = streamlit_geolocation()
-st.sidebar.write("📍 Your current location:", location)
+# Button to show current location
+col_loc_btn, col_loc_status = st.columns([1, 2])
+if col_loc_btn.button("📍 Get My Location"):
+    if location and location.get('latitude') and location.get('longitude'):
+        col_loc_status.success(f"Location acquired: ({location['latitude']:.5f}, {location['longitude']:.5f})")
+    else:
+        col_loc_status.error("Unable to retrieve location. Please allow location access in your browser.")
 
 if location and location.get('latitude') and location.get('longitude'):
     user_lat = location['latitude']
@@ -56,13 +63,13 @@ if location and location.get('latitude') and location.get('longitude'):
 
     # E10 Price Analysis Section
     st.subheader("E10 Price Analysis")
-    e10_prices = filtered_df['E10'].dropna()
+    e10_data = filtered_df[['E10', 'postcode']].dropna()
 
-    if not e10_prices.empty:
-        mean_price = e10_prices.mean()
-        std_price = e10_prices.std()
-        min_price = e10_prices.min()
-        max_price = e10_prices.max()
+    if not e10_data.empty:
+        mean_price = e10_data['E10'].mean()
+        std_price = e10_data['E10'].std()
+        min_price = e10_data['E10'].min()
+        max_price = e10_data['E10'].max()
 
         # Stats cards
         col1, col2, col3, col4 = st.columns(4)
@@ -71,20 +78,35 @@ if location and location.get('latitude') and location.get('longitude'):
         col3.metric("Min (£)", f"{min_price:.2f}")
         col4.metric("Max (£)", f"{max_price:.2f}")
 
-        # Histogram with KDE using Plotly
-        st.markdown("**📊 E10 Price Distribution**")
-        fig_hist = px.histogram(e10_prices, nbins=20, title="E10 Price Distribution",
-                                labels={"value": "E10 Price (£)"},
-                                marginal="rug", opacity=0.75)
-        st.plotly_chart(fig_hist, use_container_width=True)
+        # Two plots side by side
+        col_hist, col_box = st.columns(2)
 
-        # Boxplot using Plotly
-        st.markdown("**📦 E10 Price Boxplot**")
-        fig_box = go.Figure()
-        fig_box.add_trace(go.Box(x=e10_prices, name="E10 Prices", marker_color="lightgreen"))
-        fig_box.update_layout(title="Boxplot of E10 Prices", xaxis_title="E10 Price (£)")
-        st.plotly_chart(fig_box, use_container_width=True)
+        # Histogram with KDE using Plotly (no zoom)
+        with col_hist:
+            st.markdown("**📊 E10 Price Distribution**")
+            fig_hist = px.histogram(e10_data, x='E10', nbins=20, title="E10 Price Distribution",
+                                    labels={"E10": "E10 Price (£)"}, marginal="rug", opacity=0.75)
+            fig_hist.update_layout(dragmode=False)
+            st.plotly_chart(fig_hist, use_container_width=True)
+
+        # Boxplot using Plotly with postcode in hover info (no zoom)
+        with col_box:
+            st.markdown("**📦 E10 Price Boxplot**")
+            fig_box = go.Figure()
+            fig_box.add_trace(go.Box(
+                x=e10_data['E10'],
+                text=e10_data['postcode'],
+                hoverinfo='x+text',
+                name="E10 Prices",
+                marker_color="lightgreen"
+            ))
+            fig_box.update_layout(
+                title="Boxplot of E10 Prices",
+                xaxis_title="E10 Price (£)",
+                dragmode=False
+            )
+            st.plotly_chart(fig_box, use_container_width=True)
     else:
         st.warning("No valid E10 price data available to display.")
 else:
-    st.sidebar.info("📍 Waiting for your location... Please allow location access in your browser.")
+    st.info("📍 Waiting for your location... Please allow location access in your browser.")
